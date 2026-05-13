@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BI Egressos — Campus Maricá</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f4f5f7; color: #1a1d23; font-size: 14px; }
+  header { background: #0f3460; color: #fff; padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: .01em; }
+  header span { font-size: 12px; opacity: .7; }
+  .filters { background: #fff; border-bottom: 1px solid #e2e5ea; padding: .85rem 2rem; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .filters label { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .filters select { font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #f9fafb; color: #1a1d23; cursor: pointer; }
+  .filters select:focus { outline: 2px solid #0f3460; outline-offset: 1px; }
+  .main { padding: 1.5rem 2rem; max-width: 1280px; margin: 0 auto; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .kpi { background: #fff; border-radius: 10px; padding: 1rem 1.25rem; border: 1px solid #e2e5ea; }
+  .kpi-label { font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .kpi-val { font-size: 26px; font-weight: 600; color: #0f3460; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .chart-card { background: #fff; border-radius: 10px; padding: 1.25rem 1.5rem; border: 1px solid #e2e5ea; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #6b7280; }
+  .ldot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .note { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+  footer { text-align: center; padding: 1.5rem; font-size: 11px; color: #9ca3af; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1> Egressos — Campus Maricá - Formatec &nbsp;|&nbsp; 2025/1 · 2025/2 · 2026/1</h1>
+  <span>143 egressos</span>
+</header>
+
+<div class="filters">
+  <label>Semestre:</label>
+  <select id="fs"><option value="all">Todos</option><option value="2025/1">2025/1</option><option value="2025/2">2025/2</option><option value="2026/1">2026/1</option></select>
+  <label>Modalidade:</label>
+  <select id="fm"><option value="all">Todas</option><option value="Subsequente">Subsequente</option><option value="Concomitante">Concomitante</option></select>
+  <label>Turno:</label>
+  <select id="ft"><option value="all">Todos</option><option value="Noturno">Noturno</option><option value="Vespertino">Vespertino</option></select>
+  <label>Curso:</label>
+  <select id="fc"><option value="all">Todos</option><option value="Edificações">Edificações</option><option value="Meio Ambiente">Meio Ambiente</option><option value="Logística">Logística</option><option value="Informática para Internet">Informática para Internet</option><option value="Guia de Turismo">Guia de Turismo</option></select>
+  <label>Sexo:</label>
+  <select id="fx"><option value="all">Todos</option><option value="M">Masculino</option><option value="F">Feminino</option></select>
+</div>
+
+<div class="main">
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Total de egressos</div><div class="kpi-val" id="kv-total">—</div><div class="kpi-sub">matrículas únicas</div></div>
+    <div class="kpi"><div class="kpi-label">Idade média estimada</div><div class="kpi-val" id="kv-idade">—</div><div class="kpi-sub">anos (por faixa)</div></div>
+    <div class="kpi"><div class="kpi-label">Renda ≤ 1 SM</div><div class="kpi-val" id="kv-renda">—</div><div class="kpi-sub">dos que informaram</div></div>
+    <div class="kpi"><div class="kpi-label">Sem dado de renda</div><div class="kpi-val" id="kv-sem">—</div><div class="kpi-sub">não preenchido</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Egressos por curso</div>
+      <div class="legend" id="lg-curso"></div>
+      <div style="position:relative;height:240px"><canvas id="cc-curso"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Faixa etária</div>
+      <div class="legend" id="lg-faixa"></div>
+      <div style="position:relative;height:240px"><canvas id="cc-faixa"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Distribuição por sexo</div>
+      <div class="legend" id="lg-sexo"></div>
+      <div style="position:relative;height:220px"><canvas id="cc-sexo"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Renda familiar per capita</div>
+      <div class="legend" id="lg-renda"></div>
+      <div style="position:relative;height:220px"><canvas id="cc-renda"></canvas></div>
+      <div class="note" id="note-renda"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Modalidade</div>
+      <div class="legend" id="lg-mod"></div>
+      <div style="position:relative;height:180px"><canvas id="cc-mod"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Turno</div>
+      <div class="legend" id="lg-turno"></div>
+      <div style="position:relative;height:180px"><canvas id="cc-turno"></canvas></div>
+    </div>
+    <div class="chart-card full">
+      <div class="chart-title">Egressos por semestre de conclusão</div>
+      <div style="position:relative;height:150px"><canvas id="cc-sem"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<footer>Campus Maricá — IFF &nbsp;·&nbsp; Análise potencializada por Inteligência Artificial - maio/2026</footer>
+
+<script>
+const RAW=[{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":null,"semestre":"2026/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"21-25","renda":null,"semestre":"2026/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2026/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"RFP <= 0,5 SM","semestre":"2026/1"},{"curso":"Guia de Turismo","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"15-17","renda":null,"semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":null,"semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"50+","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":null,"semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":"RFP <= 0,5 SM","semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/2"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":null,"semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"RFP <= 0,5 SM","semestre":"2025/2"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"21-25","renda":null,"semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":null,"semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"50+","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"1,5 SM < RFP <= 2,5 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":null,"semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":"1,5 SM < RFP <= 2,5 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":null,"semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"RFP <= 0,5 SM","semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":"RFP <= 0,5 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":"RFP > 3 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/2"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"RFP <= 0,5 SM","semestre":"2025/2"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"50+","renda":"RFP <= 0,5 SM","semestre":"2025/2"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/2"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"2,5 SM < RFP <= 3 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"15-17","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"15-17","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"21-25","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"21-25","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"18-20","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"50+","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"50+","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"15-17","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":"1 SM < RFP <= 1,5 SM","semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"1,5 SM < RFP <= 2,5 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"M","faixa":"15-17","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"RFP > 3 SM","semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"50+","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"RFP > 3 SM","semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":"RFP > 3 SM","semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"RFP <= 0,5 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"21-25","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Concomitante","turno":"Vespertino","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Logística","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"50+","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Informática para Internet","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":"0,5 SM < RFP <= 1 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"41-50","renda":null,"semestre":"2025/1"},{"curso":"Guia de Turismo","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"31-40","renda":"1,5 SM < RFP <= 2,5 SM","semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":null,"semestre":"2025/1"},{"curso":"Edificações","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"M","faixa":"31-40","renda":null,"semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"26-30","renda":"1,5 SM < RFP <= 2,5 SM","semestre":"2025/1"},{"curso":"Meio Ambiente","modalidade":"Subsequente","turno":"Noturno","sexo":"F","faixa":"18-20","renda":null,"semestre":"2025/1"}];
+
+const CCURSO={'Edificações':'#1d4ed8','Meio Ambiente':'#15803d','Logística':'#b45309','Informática para Internet':'#7c3aed','Guia de Turismo':'#be185d'};
+const CFAIXA=['#dbeafe','#93c5fd','#60a5fa','#3b82f6','#2563eb','#1d4ed8','#1e3a8a'];
+const CRENDA=['#fef3c7','#fde68a','#fbbf24','#f59e0b','#d97706','#b45309'];
+const FMID={'15-17':16,'18-20':19,'21-25':23,'26-30':28,'31-40':35,'41-50':45,'50+':55};
+let CHS={};
+
+function cnt(arr,k){const r={};arr.forEach(d=>{const v=d[k]||'N/A';r[v]=(r[v]||0)+1;});return r;}
+function leg(id,labs,cols){document.getElementById(id).innerHTML=labs.map((l,i)=>`<span><span class="ldot" style="background:${cols[i%cols.length]}"></span>${l}</span>`).join('');}
+function mk(id,type,labels,datasets,opts={}){
+  if(CHS[id])CHS[id].destroy();
+  CHS[id]=new Chart(document.getElementById(id),{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},...opts}});
+}
+
+function render(){
+  const fs=document.getElementById('fs').value,fm=document.getElementById('fm').value,
+        ft=document.getElementById('ft').value,fc=document.getElementById('fc').value,
+        fx=document.getElementById('fx').value;
+  const D=RAW.filter(d=>(fs==='all'||d.semestre===fs)&&(fm==='all'||d.modalidade===fm)&&
+    (ft==='all'||d.turno===ft)&&(fc==='all'||d.curso===fc)&&(fx==='all'||d.sexo===fx));
+
+  document.getElementById('kv-total').textContent=D.length;
+  const idadeSum=D.reduce((a,d)=>a+(FMID[d.faixa]||35),0);
+  document.getElementById('kv-idade').textContent=D.length?(idadeSum/D.length).toFixed(1):'—';
+  const comR=D.filter(d=>d.renda),baixa=comR.filter(d=>['RFP <= 0,5 SM','0,5 SM < RFP <= 1 SM'].includes(d.renda)).length;
+  document.getElementById('kv-renda').textContent=comR.length?Math.round(baixa/comR.length*100)+'%':'N/A';
+  document.getElementById('kv-sem').textContent=D.filter(d=>!d.renda).length;
+
+  const cursoL=Object.keys(CCURSO),byCurso=cnt(D,'curso'),cursoV=cursoL.map(k=>byCurso[k]||0);
+  leg('lg-curso',cursoL.map((l,i)=>`${l} (${cursoV[i]})`),Object.values(CCURSO));
+  mk('cc-curso','bar',cursoL,[{data:cursoV,backgroundColor:Object.values(CCURSO),borderRadius:4,borderSkipped:false}],
+    {scales:{x:{ticks:{maxRotation:30,font:{size:11}}},y:{beginAtZero:true,ticks:{stepSize:5}}}});
+
+  const faixaL=['15-17','18-20','21-25','26-30','31-40','41-50','50+'],byFaixa=cnt(D,'faixa'),faixaV=faixaL.map(f=>byFaixa[f]||0);
+  leg('lg-faixa',faixaL.map((f,i)=>`${f} (${faixaV[i]})`),CFAIXA);
+  mk('cc-faixa','bar',faixaL,[{data:faixaV,backgroundColor:CFAIXA,borderRadius:4,borderSkipped:false}],{scales:{y:{beginAtZero:true}}});
+
+  const bySexo=cnt(D,'sexo'),sexoV=[bySexo['M']||0,bySexo['F']||0],sexoC=['#2563eb','#db2777'];
+  leg('lg-sexo',[`Masculino (${sexoV[0]})`,`Feminino (${sexoV[1]})`],sexoC);
+  mk('cc-sexo','doughnut',['Masculino','Feminino'],[{data:sexoV,backgroundColor:sexoC,borderWidth:0}],{cutout:'58%'});
+
+  const rendaL=['RFP <= 0,5 SM','0,5 SM < RFP <= 1 SM','1 SM < RFP <= 1,5 SM','1,5 SM < RFP <= 2,5 SM','2,5 SM < RFP <= 3 SM','RFP > 3 SM'];
+  const rendaShort=['≤ 0,5 SM','0,5–1 SM','1–1,5 SM','1,5–2,5 SM','2,5–3 SM','> 3 SM'];
+  const byRenda=cnt(D.filter(d=>d.renda),'renda'),rendaV=rendaL.map(k=>byRenda[k]||0);
+  leg('lg-renda',rendaShort.map((l,i)=>`${l} (${rendaV[i]})`),CRENDA);
+  mk('cc-renda','bar',rendaShort,[{data:rendaV,backgroundColor:CRENDA,borderRadius:4,borderSkipped:false}],{scales:{y:{beginAtZero:true}}});
+  document.getElementById('note-renda').textContent=`* ${D.filter(d=>!d.renda).length} alunos não informaram renda`;
+
+  const byMod=cnt(D,'modalidade'),modV=[byMod['Subsequente']||0,byMod['Concomitante']||0],modC=['#1d4ed8','#6ee7b7'];
+  leg('lg-mod',[`Subsequente (${modV[0]})`,`Concomitante (${modV[1]})`],modC);
+  mk('cc-mod','doughnut',['Subsequente','Concomitante'],[{data:modV,backgroundColor:modC,borderWidth:0}],{cutout:'58%'});
+
+  const byTurno=cnt(D,'turno'),turnoV=[byTurno['Noturno']||0,byTurno['Vespertino']||0],turnoC=['#312e81','#fbbf24'];
+  leg('lg-turno',[`Noturno (${turnoV[0]})`,`Vespertino (${turnoV[1]})`],turnoC);
+  mk('cc-turno','doughnut',['Noturno','Vespertino'],[{data:turnoV,backgroundColor:turnoC,borderWidth:0}],{cutout:'58%'});
+
+  const semL=['2025/1','2025/2','2026/1'],bySem=cnt(D,'semestre');
+  mk('cc-sem','bar',semL,[{data:semL.map(k=>bySem[k]||0),backgroundColor:['#1d4ed8','#2563eb','#93c5fd'],borderRadius:6,borderSkipped:false}],
+    {scales:{y:{beginAtZero:true,ticks:{stepSize:10}},x:{ticks:{font:{size:13,weight:'500'}}}}});
+}
+
+['fs','fm','ft','fc','fx'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+render();
+</script>
+</body>
+</html>
