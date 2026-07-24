@@ -80,6 +80,7 @@
   <label>Ver estatísticas na data:</label>
   <input type="date" id="asOf">
   <button class="ghost" id="btnHoje">Mais recente</button>
+  <button id="btnAtualizar" title="Recarrega a página buscando os dados mais recentes publicados">🔄 Atualizar</button>
   <span class="asof-tag" id="asOfTag">—</span>
 </div>
 
@@ -272,6 +273,8 @@ function baseRegistros(){ return snapAtivo().solicitacoes || []; }
     asOfIndex=idx; render();
   });
   document.getElementById('btnHoje').addEventListener('click',()=>{ asOfIndex=HIST.length-1; dt.value=HIST[asOfIndex].data; render(); });
+  // Recarrega buscando a versão mais recente publicada (furando o cache do navegador).
+  document.getElementById('btnAtualizar').addEventListener('click',()=>{ location.href = location.pathname + '?t=' + Date.now(); });
 
   ['fSit','fCampus','fNivel'].forEach(id=>document.getElementById(id).addEventListener('change',render));
   document.getElementById('fBusca').addEventListener('input',render);
