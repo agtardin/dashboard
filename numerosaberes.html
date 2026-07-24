@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard RSC — IFF/SIPPAG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f4f5f7; color: #1a1d23; font-size: 14px; }
+  header { background: #0f3460; color: #fff; padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: .01em; }
+  header span { font-size: 12px; opacity: .7; }
+  .aviso { background: #fff7ed; border-bottom: 1px solid #fed7aa; color: #9a3412; font-size: 12px; padding: .6rem 2rem; }
+  .filters { background: #fff; border-bottom: 1px solid #e2e5ea; padding: .85rem 2rem; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .filters label { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .filters select, .filters input[type=text] { font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #f9fafb; color: #1a1d23; }
+  .filters select:focus, .filters input:focus { outline: 2px solid #0f3460; outline-offset: 1px; }
+  .filters input[type=text] { min-width: 200px; }
+  .filters .chk { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #6b7280; }
+  .main { padding: 1.5rem 2rem; max-width: 1280px; margin: 0 auto; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .kpi { background: #fff; border-radius: 10px; padding: 1rem 1.25rem; border: 1px solid #e2e5ea; }
+  .kpi-label { font-size: 11px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .kpi-val { font-size: 26px; font-weight: 600; color: #0f3460; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+  .chart-card { background: #fff; border-radius: 10px; padding: 1.25rem 1.5rem; border: 1px solid #e2e5ea; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #6b7280; }
+  .ldot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .note { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+  th { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; }
+  td.wrap { white-space: normal; }
+  .scroll { max-height: 420px; overflow: auto; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+  .b-pendente { background: #fef3c7; color: #92400e; }
+  .b-em-avaliacao { background: #dbeafe; color: #1e40af; }
+  .b-deferido { background: #dcfce7; color: #166534; }
+  .b-indeferido { background: #fee2e2; color: #991b1b; }
+  .b-outro { background: #f3f4f6; color: #4b5563; }
+  .bar-mini { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #f3f4f6; width: 140px; }
+  footer { text-align: center; padding: 1.5rem; font-size: 11px; color: #9ca3af; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dashboard RSC — IFF/SIPPAG</h1>
+  <span id="hd-total">— solicitações</span>
+</header>
+
+<div class="aviso">
+  ⚠️ "Colegiado pendente" é uma aproximação (solicitação com mais de 1 avaliador
+  listado + situação ainda "Em Avaliação"), não uma detecção real de status
+  individual por avaliador — a API pública do RSC não expõe decisão por pessoa,
+  só uma situação agregada por solicitação. O campo avaliador também é texto
+  livre da API (nomes separados por vírgula), sem garantia de formato estável.
+</div>
+
+<div class="filters">
+  <label>Situação:</label>
+  <select id="fSit"><option value="all">Todas</option></select>
+  <label>Campus:</label>
+  <select id="fCampus"><option value="all">Todos</option></select>
+  <label>Nível:</label>
+  <select id="fNivel"><option value="all">Todos</option></select>
+  <label>Avaliador:</label>
+  <input type="text" id="fAval" placeholder="Buscar avaliador...">
+  <span class="chk"><input type="checkbox" id="fColegiado"> Só colegiado pendente</span>
+</div>
+
+<div class="main">
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Total de solicitações</div><div class="kpi-val" id="kv-total">—</div><div class="kpi-sub">após filtros</div></div>
+    <div class="kpi"><div class="kpi-label">% Deferido</div><div class="kpi-val" id="kv-deferido">—</div><div class="kpi-sub">do total filtrado</div></div>
+    <div class="kpi"><div class="kpi-label">Avaliadores únicos</div><div class="kpi-val" id="kv-avaliadores">—</div><div class="kpi-sub">aparecem no filtro atual</div></div>
+    <div class="kpi"><div class="kpi-label">Colegiado pendente</div><div class="kpi-val" id="kv-colegiado">—</div><div class="kpi-sub">aproximado, ver aviso acima</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Solicitações por situação</div>
+      <div class="legend" id="lg-situacao"></div>
+      <div style="position:relative;height:220px"><canvas id="cc-situacao"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Solicitações por campus</div>
+      <div class="legend" id="lg-campus"></div>
+      <div style="position:relative;height:220px"><canvas id="cc-campus"></canvas></div>
+    </div>
+    <div class="chart-card full">
+      <div class="chart-title">Top 15 avaliadores por carga (nº de solicitações atribuídas)</div>
+      <div style="position:relative;height:340px"><canvas id="cc-avaliadores"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card full" style="margin-bottom:16px">
+    <div class="chart-title">Estatísticas por avaliador</div>
+    <div class="scroll">
+      <table id="tb-avaliadores">
+        <thead><tr><th>Avaliador</th><th>Carga</th><th>Pendente</th><th>Em Avaliação</th><th>Deferido</th><th>Indeferido</th><th>Pontuação média</th><th>Distribuição</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="chart-card full" style="margin-bottom:16px">
+    <div class="chart-title">Colegiado pendente (aproximado — ver aviso no topo)</div>
+    <div class="scroll">
+      <table id="tb-colegiado">
+        <thead><tr><th>Interessado</th><th>Matrícula</th><th>Campus</th><th>Avaliadores</th><th>Situação</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="chart-card full">
+    <div class="chart-title">Solicitações (filtradas)</div>
+    <div class="scroll">
+      <table id="tb-solicitacoes">
+        <thead><tr><th>Interessado</th><th>Matrícula</th><th>Situação</th><th>Campus</th><th>Nível</th><th>Avaliador(es)</th><th>Pontuação</th><th>Portaria</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>SIPPAG/IFF — RSC_publico · dados públicos de transparência · gerado em amostra parcial — pessoas já monitoradas; dataset completo chega na próxima execução da rotina · ✨Análise potencializada por IA🤖</footer>
+
+<script>
+const RAW = [{"matricula": "1749009", "interessado": "ANDRE GOMES TARDIN", "situacao": "Em Avaliação", "campus": "Campus Campos Centro", "nivel": "RSC-PCCTAE V", "pontuacao": 0.0, "criterios": "8/5", "avaliadores": ["LIVIA MARIA SCARINO DA SILVA VIDEIRA", "RAQUEL DE AZEVEDO CARNEIRO", "LYGIA GOTTGTROY FRAGA ZIGOLIS FILHA DE OLIVEIRA"], "portaria": "Não emitida"}, {"matricula": "2556128", "interessado": "PATRICIA DE OLIVEIRA SANTOS", "situacao": "Deferido", "campus": "Campus Campos Centro", "nivel": "RSC-PCCTAE VI", "pontuacao": 92.0, "criterios": "10/7", "avaliadores": ["PAULO VITOR RIBEIRO CHAGAS", "CARLOS AUGUSTO CORDEIRO DOS SANTOS", "ALESSANDRO CANUTO DA CONCEICAO"], "portaria": "Não emitida"}, {"matricula": "1884655", "interessado": "MARIA LETICIA BRETAS E ARUEIRA", "situacao": "Em Avaliação", "campus": "Não informado", "nivel": "Não informado", "pontuacao": 0.0, "criterios": "0/5", "avaliadores": ["VANIZA OLIVEIRA FREITAS"], "portaria": "Não emitida"}, {"matricula": "1646941", "interessado": "FRANCISCO CARLOS MARCAL PEREIRA FILHO", "situacao": "Pendente", "campus": "Não informado", "nivel": "Não informado", "pontuacao": 0.0, "criterios": "0/7", "avaliadores": ["Não Assumido"], "portaria": "Não emitida"}, {"matricula": "0139952", "interessado": "MONICA AZEVEDO DE FREITAS ALMEIDA", "situacao": "Pendente", "campus": "Não informado", "nivel": "Não informado", "pontuacao": 0.0, "criterios": "0/5", "avaliadores": ["Não Assumido"], "portaria": "Não emitida"}, {"matricula": "1672549", "interessado": "MONICA CHAGAS GOMES", "situacao": "Pendente", "campus": "Não informado", "nivel": "Não informado", "pontuacao": 0.0, "criterios": "0/7", "avaliadores": ["Não Assumido"], "portaria": "Não emitida"}];
+
+const SIT_COLOR = {"Pendente":"#f59e0b","Em Avaliação":"#2563eb","Deferido":"#16a34a","Indeferido":"#dc2626"};
+const SIT_BADGE = {"Pendente":"b-pendente","Em Avaliação":"b-em-avaliacao","Deferido":"b-deferido","Indeferido":"b-indeferido"};
+function corSituacao(s){ return SIT_COLOR[s] || "#6b7280"; }
+function badgeSituacao(s){ return SIT_BADGE[s] || "b-outro"; }
+function norm(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+
+function popularSelect(id, valores){
+  const sel = document.getElementById(id);
+  valores.sort().forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+}
+popularSelect('fSit', [...new Set(RAW.map(r=>r.situacao))]);
+popularSelect('fCampus', [...new Set(RAW.map(r=>r.campus))]);
+popularSelect('fNivel', [...new Set(RAW.map(r=>r.nivel))]);
+
+let CHS = {};
+function mk(id, type, labels, datasets, opts={}){
+  if (CHS[id]) CHS[id].destroy();
+  CHS[id] = new Chart(document.getElementById(id), {type, data:{labels, datasets},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, ...opts}});
+}
+function leg(id, labs, cols){
+  document.getElementById(id).innerHTML = labs.map((l,i)=>
+    `<span><span class="ldot" style="background:${cols[i%cols.length]}"></span>${l}</span>`).join('');
+}
+function cnt(arr, k){ const r={}; arr.forEach(d=>{ const v=d[k]||'N/A'; r[v]=(r[v]||0)+1; }); return r; }
+
+function filtrar(){
+  const fSit = document.getElementById('fSit').value;
+  const fCampus = document.getElementById('fCampus').value;
+  const fNivel = document.getElementById('fNivel').value;
+  const fAval = norm(document.getElementById('fAval').value);
+  const soColegiado = document.getElementById('fColegiado').checked;
+  return RAW.filter(r=>{
+    if (fSit!=='all' && r.situacao!==fSit) return false;
+    if (fCampus!=='all' && r.campus!==fCampus) return false;
+    if (fNivel!=='all' && r.nivel!==fNivel) return false;
+    if (fAval && !r.avaliadores.some(n=>norm(n).includes(fAval))) return false;
+    const colegiadoPendente = r.avaliadores.length>1 && r.situacao==='Em Avaliação';
+    if (soColegiado && !colegiadoPendente) return false;
+    return true;
+  });
+}
+
+function agregarAvaliadores(D){
+  const m = {};
+  D.forEach(r=>{
+    r.avaliadores.forEach(nome=>{
+      const a = m[nome] || (m[nome] = {nome, qtd:0, porSituacao:{}, pontuacoes:[]});
+      a.qtd++;
+      a.porSituacao[r.situacao] = (a.porSituacao[r.situacao]||0) + 1;
+      if (r.pontuacao != null) a.pontuacoes.push(r.pontuacao);
+    });
+  });
+  return Object.values(m).sort((a,b)=>b.qtd-a.qtd);
+}
+
+function render(){
+  const D = filtrar();
+  const total = D.length;
+  document.getElementById('hd-total').textContent = `${RAW.length} solicitações (total geral)`;
+  document.getElementById('kv-total').textContent = total;
+
+  const bySit = cnt(D, 'situacao');
+  const deferido = bySit['Deferido'] || 0;
+  document.getElementById('kv-deferido').textContent = total ? Math.round(deferido/total*100)+'%' : '—';
+
+  const avaliadores = agregarAvaliadores(D);
+  document.getElementById('kv-avaliadores').textContent = avaliadores.length;
+
+  const colegiado = D.filter(r=>r.avaliadores.length>1 && r.situacao==='Em Avaliação');
+  document.getElementById('kv-colegiado').textContent = colegiado.length;
+
+  // Gráficos dependem do Chart.js (CDN externo) — se ele falhar em carregar
+  // (rede instável, bloqueador), isso não deve derrubar as tabelas abaixo.
+  try {
+    if (typeof Chart === 'undefined') throw new Error('Chart.js não carregou (CDN indisponível)');
+
+    const sitLabels = Object.keys(bySit);
+    leg('lg-situacao', sitLabels.map(s=>`${s} (${bySit[s]})`), sitLabels.map(corSituacao));
+    mk('cc-situacao', 'doughnut', sitLabels, [{data:sitLabels.map(s=>bySit[s]), backgroundColor:sitLabels.map(corSituacao), borderWidth:0}], {cutout:'58%'});
+
+    const byCampus = cnt(D, 'campus');
+    const campusLabels = Object.keys(byCampus);
+    const campusCores = ['#1d4ed8','#15803d','#b45309','#7c3aed','#be185d','#0891b2','#4d7c0f'];
+    leg('lg-campus', campusLabels.map((c,i)=>`${c} (${byCampus[c]})`), campusCores);
+    mk('cc-campus', 'bar', campusLabels, [{data:campusLabels.map(c=>byCampus[c]), backgroundColor:campusLabels.map((c,i)=>campusCores[i%campusCores.length]), borderRadius:4, borderSkipped:false}],
+      {indexAxis:'y', scales:{x:{beginAtZero:true}}});
+
+    const top15 = avaliadores.slice(0,15);
+    mk('cc-avaliadores', 'bar', top15.map(a=>a.nome), [{data:top15.map(a=>a.qtd), backgroundColor:'#0f3460', borderRadius:4, borderSkipped:false}],
+      {indexAxis:'y', scales:{x:{beginAtZero:true}}, plugins:{legend:{display:false}}});
+  } catch (e) {
+    document.querySelectorAll('.chart-card canvas').forEach(c=>{
+      c.parentElement.innerHTML = '<p class="note">Gráfico indisponível (' + e.message + ').</p>';
+    });
+  }
+
+  const situacoesTodas = ['Pendente','Em Avaliação','Deferido','Indeferido'];
+  const tbAval = document.querySelector('#tb-avaliadores tbody');
+  tbAval.innerHTML = avaliadores.map(a=>{
+    const media = a.pontuacoes.length ? (a.pontuacoes.reduce((x,y)=>x+y,0)/a.pontuacoes.length).toFixed(1) : '—';
+    const barra = situacoesTodas.map(s=>{
+      const v = a.porSituacao[s]||0, pct = a.qtd ? (v/a.qtd*100) : 0;
+      return pct ? `<div style="width:${pct}%;background:${corSituacao(s)}"></div>` : '';
+    }).join('');
+    return `<tr><td>${a.nome}</td><td>${a.qtd}</td>` +
+      situacoesTodas.map(s=>`<td>${a.porSituacao[s]||0}</td>`).join('') +
+      `<td>${media}</td><td><div class="bar-mini">${barra}</div></td></tr>`;
+  }).join('') || '<tr><td colspan="8">Nenhum avaliador no filtro atual.</td></tr>';
+
+  const tbCol = document.querySelector('#tb-colegiado tbody');
+  tbCol.innerHTML = colegiado.map(r=>
+    `<tr><td class="wrap">${r.interessado}</td><td>${r.matricula}</td><td>${r.campus}</td>` +
+    `<td class="wrap">${r.avaliadores.join(', ')}</td><td><span class="badge ${badgeSituacao(r.situacao)}">${r.situacao}</span></td></tr>`
+  ).join('') || '<tr><td colspan="5">Nenhuma solicitação em colegiado pendente no filtro atual.</td></tr>';
+
+  const tbSol = document.querySelector('#tb-solicitacoes tbody');
+  tbSol.innerHTML = D.map(r=>
+    `<tr><td class="wrap">${r.interessado}</td><td>${r.matricula}</td>` +
+    `<td><span class="badge ${badgeSituacao(r.situacao)}">${r.situacao}</span></td>` +
+    `<td>${r.campus}</td><td>${r.nivel}</td><td class="wrap">${r.avaliadores.join(', ') || '—'}</td>` +
+    `<td>${r.pontuacao ?? '—'}</td><td>${r.portaria || '—'}</td></tr>`
+  ).join('') || '<tr><td colspan="8">Nenhuma solicitação no filtro atual.</td></tr>';
+}
+
+['fSit','fCampus','fNivel'].forEach(id=>document.getElementById(id).addEventListener('change', render));
+document.getElementById('fAval').addEventListener('input', render);
+document.getElementById('fColegiado').addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
