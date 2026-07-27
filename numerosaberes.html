@@ -166,13 +166,10 @@
     <div class="chart-card full">
       <div class="chart-title">Solicitações <span class="note" style="text-transform:none">— clique numa linha para ver todos os campos</span></div>
       <div class="ord-bar">
-        Ordenar:
-        <button class="ordbtn" data-ord="fila">📥 Fila de envio (1º = próximo)</button>
-        <button class="ordbtn" data-ord="interessado">Interessado A→Z</button>
-        <button class="ordbtn" data-ord="situacao">Situação</button>
-        <button class="ordbtn" data-ord="pontuacao">Maior pontuação</button>
+        <button class="ordbtn" data-ord="fila">📥 Quem será o próximo?</button>
+        <span class="note" style="text-transform:none">(ordena pela fila de envio e mostra só os pendentes; use os cabeçalhos das colunas para outras ordenações)</span>
       </div>
-      <div class="ord-note hidden" id="s-ord-note">📥 Ordenado pela <b>fila de envio</b> (data de "Enviado em", mais antigo primeiro). O <b>1º é o próximo</b> a ser avaliado por um avaliador disponível.</div>
+      <div class="ord-note hidden" id="s-ord-note">📥 Ordenado pela <b>fila de envio</b> (data de "Enviado em", mais antigo primeiro), <b>apenas pendentes</b>. O <b>1º é o próximo</b> a ser avaliado por um avaliador disponível.</div>
       <div class="scroll">
         <table id="s-tabela">
           <thead><tr>
@@ -318,8 +315,9 @@ function leg(id,labs,cols){ const el=document.getElementById(id); if(!el)return;
 // ---------- estado global ----------
 let ABA = 'solicitacoes';
 let asOfIndex = HIST.length - 1;   // índice do snapshot ativo (padrão: mais recente)
-let sortSolic = {k:'envio', dir:1};   // padrão: fila de envio (mais antigo primeiro)
-let filaMode = true;                   // mostra ranking 1º/2º/3º por padrão
+let sortSolic = {k:'interessado', dir:1};  // padrão: por nome
+let filaMode = false;                       // "Quem será o próximo?" desligado por padrão
+let filaSaved = null;                       // guarda ordenação + filtro de situação antes de ativar a fila
 let sortAval = {k:'qtd', dir:-1};
 function parseBR(s){ const m=/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s||''); return m? new Date(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime() : Infinity; }
 let avalSelecionado = null;
@@ -370,15 +368,23 @@ function baseRegistros(){ return snapAtivo().solicitacoes || []; }
   document.getElementById('aGrupo').addEventListener('change',render);
   document.getElementById('aCarga').addEventListener('input',()=>{ document.getElementById('aCargaLbl').textContent=document.getElementById('aCarga').value; render(); });
 
-  document.querySelectorAll('.ordbtn').forEach(b=>b.addEventListener('click',()=>{
-    const o=b.dataset.ord;
-    if(o==='fila'){ filaMode=true; sortSolic={k:'envio', dir:1}; }
-    else if(o==='pontuacao'){ filaMode=false; sortSolic={k:'pontuacao', dir:-1}; }
-    else { filaMode=false; sortSolic={k:o, dir:1}; }
+  const fSitEl=document.getElementById('fSit');
+  document.querySelector('.ordbtn[data-ord="fila"]').addEventListener('click',()=>{
+    if(!filaMode){
+      // ativa: guarda ordenação + filtro de situação atuais, aplica fila + só pendentes
+      filaSaved={sort:{...sortSolic}, fSit:fSitEl.value};
+      filaMode=true; sortSolic={k:'envio', dir:1}; fSitEl.value='Pendente';
+    } else {
+      // desativa: restaura a ordenação e o filtro que estavam antes
+      filaMode=false;
+      if(filaSaved){ sortSolic={...filaSaved.sort}; fSitEl.value=filaSaved.fSit; filaSaved=null; }
+      else { sortSolic={k:'interessado', dir:1}; }
+    }
     render();
-  }));
+  });
   document.querySelectorAll('#s-tabela th[data-k]').forEach(th=>th.addEventListener('click',()=>{
-    const k=th.dataset.k; filaMode=(k==='envio'); sortSolic.dir = (sortSolic.k===k? -sortSolic.dir : 1); sortSolic.k=k; render();
+    const k=th.dataset.k; filaMode=false; filaSaved=null;
+    sortSolic.dir = (sortSolic.k===k? -sortSolic.dir : 1); sortSolic.k=k; render();
   }));
   document.querySelectorAll('#a-tabela th[data-k]').forEach(th=>th.addEventListener('click',()=>{
     const k=th.dataset.k; sortAval.dir = (sortAval.k===k? -sortAval.dir : -1); sortAval.k=k; render();
