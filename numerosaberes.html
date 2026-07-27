@@ -78,6 +78,10 @@
   .drow { display: flex; gap: 10px; font-size: 12px; border-bottom: 1px solid #f0f2f5; padding: 5px 0; }
   .dk { color: #6b7280; font-weight: 600; min-width: 130px; flex-shrink: 0; }
   .dv { color: #1a1d23; word-break: break-word; }
+  .assume-sec { margin-top: 12px; border-top: 1px solid #eef0f3; padding-top: 10px; }
+  .assume-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #f5f6f8; }
+  .assume-nome { color: #1a1d23; }
+  .assume-quando { color: #6b7280; margin-left: auto; white-space: nowrap; }
   .det-resumo { font-size: 13px; color: #374151; margin: 2px 0 14px; line-height: 1.5; }
   .det-resumo b { color: #0f3460; }
   .det-sub { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; }
@@ -186,7 +190,7 @@
     </div>
     <div class="chart-card full hidden" id="s-detalhe" style="margin-top:16px">
       <div class="chart-title" id="s-detalhe-tit">Detalhes</div>
-      <div id="s-detalhe-corpo" class="detalhe-grid"></div>
+      <div id="s-detalhe-corpo"></div>
     </div>
   </div>
 
@@ -526,16 +530,21 @@ function renderSolic(){
       ['Campus',r.campus],['Nível',r.nivel],['Pontuação',r.pontuacaoDesc],['Critérios',r.criterios],
       ['Avaliador(es)',listaAv(r.avaliadores)],['Portaria',r.portaria],['Enviado em',r.dataEnvioGestao],['Aberto em',r.dataCriacao]];
     for(const k in (r.extras||{})) campos.push([k, r.extras[k]]);
-    // Assunção por grupo (observada por nós — a API não traz data por avaliador).
+    const gridHtml=campos.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${(v==null||v==='')?'—':v}</span></div>`).join('');
+    // Assunção por grupo — bloco próprio de largura total (a API não traz data por
+    // avaliador; usamos o instante observado). Assim a data não fica espremida/quebrada.
     const ga = r.grupos_assumidos || {};
-    (r.avaliadores||[]).forEach(a=>{
-      const g=avGrupo(a); if(!g) return;
-      const v=ga[g];
-      const quando = (!v || v==='pre') ? '<i>antes do monitoramento</i>' : fmtDataHora(v);
-      campos.push([`Assumiu — ${selo(g)} ${avNome(a)}`, quando]);
-    });
+    const avsG = (r.avaliadores||[]).filter(a=>avGrupo(a));
+    let assumiuHtml='';
+    if(avsG.length){
+      assumiuHtml='<div class="assume-sec"><div class="det-sub">Assunção por grupo (observado)</div>'+
+        avsG.map(a=>{const g=avGrupo(a), v=ga[g];
+          const quando=(!v||v==='pre')?'<i>antes do monitoramento</i>':fmtDataHora(v);
+          return `<div class="assume-row">${selo(g)} <span class="assume-nome">${avNome(a)}</span><span class="assume-quando">${quando}</span></div>`;
+        }).join('')+'</div>';
+    }
     document.getElementById('s-detalhe-tit').textContent='Detalhes — '+r.interessado;
-    document.getElementById('s-detalhe-corpo').innerHTML=campos.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${(v==null||v==='')?'—':v}</span></div>`).join('');
+    document.getElementById('s-detalhe-corpo').innerHTML=`<div class="detalhe-grid">${gridHtml}</div>`+assumiuHtml;
     document.getElementById('s-detalhe').classList.remove('hidden');
     document.getElementById('s-detalhe').scrollIntoView({behavior:'smooth',block:'nearest'});
   }));
